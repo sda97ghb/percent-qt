@@ -55,22 +55,6 @@ MainWindow::displayMat(const cv::Mat &mat, bool isGray)
 }
 
 void
-MainWindow::binarize()
-{
-    int threshold_value = _slider->value();
-    if (threshold_value < 0 || threshold_value > 255)
-        return;
-    int threshold_type = _inverted->checkState() == Qt::Checked ? 1 : 0; // 0: Binary, 1: Binary Inverted
-    int const max_BINARY_value = 255;
-
-    threshold(_src_gray, _dst, threshold_value, max_BINARY_value, threshold_type);
-
-    displayMat(_dst, true);
-
-    calculatePercent();
-}
-
-void
 MainWindow::resizeEvent(QResizeEvent *event)
 {
     _slider->resize(width(), _slider->height());
@@ -101,6 +85,22 @@ MainWindow::openfile()
     cvtColor(_src, _src_gray, CV_BGR2GRAY );
 
     binarize();
+}
+
+void
+MainWindow::binarize()
+{
+    int threshold_value = _slider->value();
+    if (threshold_value < 0 || threshold_value > 255)
+        return;
+    int threshold_type = _inverted->checkState() == Qt::Checked ? 1 : 0; // 0: Binary, 1: Binary Inverted
+    int const max_BINARY_value = 255;
+
+    threshold(_src_gray, _dst, threshold_value, max_BINARY_value, threshold_type);
+
+    displayMat(_dst, true);
+
+    calculatePercent();
 }
 
 void
