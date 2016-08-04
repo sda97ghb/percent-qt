@@ -13,33 +13,41 @@ MainWindow::MainWindow(QWidget *parent) :
     openFileButton->move(2, 2);
     connect(openFileButton, SIGNAL(clicked(bool)), SLOT(openfile()));
 
-    _inverted = new QCheckBox("Inverted", this);
-    _inverted->move(width() - _inverted->width(), 3);
-    connect(_inverted, SIGNAL(toggled(bool)), SLOT(binarize()));
+    _gaussian = new QCheckBox("&Gaussian", this);
+    _gaussian->setChecked(true);
+    _gaussian->move(width() - _gaussian->width(), 3);
+    connect(_gaussian, SIGNAL(toggled(bool)), SLOT(binarize()));
 
-    _slider = new QSlider(Qt::Horizontal, this);
-    _slider->setRange(0, 255);
-    _slider->setValue(230);
-    connect(_slider, SIGNAL(valueChanged(int)), SLOT(binarize()));
+    _cSlider = new QSlider(Qt::Horizontal, this);
+    _cSlider->setRange(THRESH_RANGE_MIN, THRESH_RANGE_MAX);
+    _cSlider->setValue(0);
+    connect(_cSlider, SIGNAL(valueChanged(int)), SLOT(binarize()));
+
+    _blockSize = new QSpinBox(_toolbar);
+    _blockSize->setRange(3, 99);
+    _blockSize->setSingleStep(2);
+    _blockSize->setValue(7);
+    _blockSize->move(_gaussian->x() - _blockSize->width(), 2);
+    connect(_blockSize, SIGNAL(valueChanged(int)), SLOT(binarize()));
 
     _image = new QWidget(this);
 
-    _label = new QLabel("Object is %% from the image.", this);
+    _percentInfo = new QLabel("Object is %% from the image.", this);
 
     openfile();
 }
 
 void
-MainWindow::displayMat(const cv::Mat &mat, bool isGray)
+MainWindow::displayMatrix(const cv::Mat &matrix, bool isGray)
 {
-    QImage image(mat.cols, mat.rows, QImage::Format_RGB32);
-    for (int i = 0; i < mat.rows; ++ i)
-        for (int j = 0; j < mat.cols; ++ j)
+    QImage image(matrix.cols, matrix.rows, QImage::Format_RGB32);
+    for (int i = 0; i < matrix.rows; ++ i)
+        for (int j = 0; j < matrix.cols; ++ j)
             if (isGray) {
-                uchar intensity = mat.at<uchar>(i, j);
+                uchar intensity = matrix.at<uchar>(i, j);
                 image.setPixel(j, i, qRgb(intensity, intensity, intensity));
             } else {
-                cv::Vec3b intensity = mat.at<cv::Vec3b>(i, j);
+                cv::Vec3b intensity = matrix.at<cv::Vec3b>(i, j);
                 uchar blue  = intensity.val[0];
                 uchar green = intensity.val[1];
                 uchar red   = intensity.val[2];
@@ -49,23 +57,24 @@ MainWindow::displayMat(const cv::Mat &mat, bool isGray)
     palette.setBrush(backgroundRole(), QBrush(image));
     _image->setPalette(palette);
     _image->setAutoFillBackground(true);
-    int height = _toolbar->height() + _slider->height() + image.height() + _label->height();
+    int height = _toolbar->height() + _cSlider->height() + image.height() + _percentInfo->height();
     _image->resize(image.width(), image.height());
     resize(image.width(), height);
 }
 
 void
-MainWindow::resizeEvent(QResizeEvent *event)
+MainWindow::resizeEvent(QResizeEvent *)
 {
-    _slider->resize(width(), _slider->height());
+    _cSlider->resize(width(), _cSlider->height());
     _toolbar->resize(width(), _toolbar->height());
-    _label->resize(width(), _label->height());
+    _percentInfo->resize(width(), _percentInfo->height());
 
     _toolbar->move(0, 0);
-    _inverted->move(width() - _inverted->width() - 2, 3);
-    _slider->move(0, _toolbar->height());
-    _image->move(0, _toolbar->height() + _slider->height());
-    _label->move(0, _toolbar->height() + _slider->height() + _image->height());
+    _gaussian->move(width() - _gaussian->width() - 2, 3);
+    _blockSize->move(_gaussian->x() - _blockSize->width() - 4, 2);
+    _cSlider->move(0, _toolbar->height());
+    _image->move(0, _toolbar->height() + _cSlider->height());
+    _percentInfo->move(0, _toolbar->height() + _cSlider->height() + _image->height());
 }
 
 void
@@ -75,14 +84,23 @@ MainWindow::openfile()
                                                     "Select an image file",
                                                     "/home/dmitry/percent/");
     if (filename.isEmpty()) {
+        QMessageBox::critical(this, "Error", "Can't open file.\n"
+                                             "Application will be closed.");
         exit(EXIT_SUCCESS);
     }
 
-    /// Load an image
-    _src = cv::imread(filename.toStdString());
+    try {
+        /// Load an image
+        _src = cv::imread(filename.toStdString());
 
-    /// Convert the image to Gray
-    cvtColor(_src, _src_gray, CV_BGR2GRAY );
+        /// Convert the image to Gray
+        cvtColor(_src, _src_gray, CV_BGR2GRAY );
+    }
+    catch (cv::Exception &exception) {
+        QMessageBox::critical(this, "Error", "File is not an image.\n"
+                                             "Application will be closed.");
+        abort();
+    }
 
     binarize();
 }
@@ -90,15 +108,16 @@ MainWindow::openfile()
 void
 MainWindow::binarize()
 {
-    int threshold_value = _slider->value();
-    if (threshold_value < 0 || threshold_value > 255)
-        return;
-    int threshold_type = _inverted->checkState() == Qt::Checked ? 1 : 0; // 0: Binary, 1: Binary Inverted
-    int const max_BINARY_value = 255;
+    auto adaptiveMethod = _gaussian->isChecked() ?
+                cv::ADAPTIVE_THRESH_GAUSSIAN_C : cv::ADAPTIVE_THRESH_MEAN_C;
 
-    threshold(_src_gray, _dst, threshold_value, max_BINARY_value, threshold_type);
+//    threshold(_src_gray, _dst, _slider->value(), 255, cv::THRESH_BINARY);
+    cv::adaptiveThreshold(_src_gray, _dst, 255,
+                          adaptiveMethod,
+                          cv::THRESH_BINARY,
+                          _blockSize->value(), _cSlider->value());
 
-    displayMat(_dst, true);
+    displayMatrix(_dst, true);
 
     calculatePercent();
 }
@@ -119,6 +138,5 @@ MainWindow::calculatePercent()
     float percent = whitePixelsCount > blackPixelsCount ?
                     blackPixelsCount : whitePixelsCount;
     percent = 100.0f * percent / (whitePixelsCount + blackPixelsCount);
-    _label->setText(QString("Object is %1% from the image.")
-                    .arg(percent));
+    _percentInfo->setText(QString("Object is %1% from the image.").arg(percent));
 }

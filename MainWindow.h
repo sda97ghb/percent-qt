@@ -6,10 +6,12 @@
 #include <QCheckBox>
 #include <QFileDialog>
 #include <QLabel>
+#include <QMessageBox>
 #include <QPalette>
 #include <QPushButton>
 #include <QRgb>
 #include <QSlider>
+#include <QSpinBox>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -23,19 +25,23 @@ public:
     MainWindow(QWidget *parent = nullptr);
 
 private:
+    const int THRESH_RANGE_MIN = -100;
+    const int THRESH_RANGE_MAX =  100;
+
     cv::Mat _src, _src_gray, _dst;
 
     QWidget *_toolbar;
-    QCheckBox *_inverted;
-    QSlider *_slider;
+    QCheckBox *_gaussian;
+    QSlider *_cSlider;
+    QSpinBox *_blockSize;
     QWidget *_image;
-    QLabel *_label;
+    QLabel *_percentInfo;
 
     void calculatePercent();
 
 protected:
-    void resizeEvent(QResizeEvent *event);
-    void displayMat(const cv::Mat &mat, bool isGray = false);
+    void resizeEvent(QResizeEvent *);
+    void displayMatrix(const cv::Mat &matrix, bool isGray = false);
 
 public slots:
     void openfile();
