@@ -25,8 +25,15 @@ public:
     MainWindow(QWidget *parent = nullptr);
 
 private:
-    const int THRESH_RANGE_MIN = -100;
-    const int THRESH_RANGE_MAX =  100;
+    const int THRESH_RANGE_MIN = 0;
+    const int THRESH_RANGE_MAX = 255;
+//    const int THRESH_RANGE_MIN = -100;
+//    const int THRESH_RANGE_MAX =  100;
+
+    const int MAX_IMAGE_WIDTH = 800;
+    const int MAX_IMAGE_HEIGHT = 600;
+
+    const int RADIUS = 10;
 
     cv::Mat _src, _src_gray, _dst;
 
@@ -36,6 +43,12 @@ private:
     QSpinBox *_blockSize;
     QWidget *_image;
     QLabel *_percentInfo;
+
+    bool _isFileOpen;
+
+    void resizeImageToFit();
+
+    void fixLightness();
 
     void calculatePercent();
 

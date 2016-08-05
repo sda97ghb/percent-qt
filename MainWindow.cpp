@@ -1,7 +1,8 @@
 #include "MainWindow.h"
 
 MainWindow::MainWindow(QWidget *parent) :
-    QWidget(parent, Qt::Dialog)
+    QWidget(parent, Qt::Dialog),
+    _isFileOpen(false)
 {
     setWindowTitle("Binarization");
     setMinimumSize(220, 50);
@@ -57,7 +58,8 @@ MainWindow::displayMatrix(const cv::Mat &matrix, bool isGray)
     palette.setBrush(backgroundRole(), QBrush(image));
     _image->setPalette(palette);
     _image->setAutoFillBackground(true);
-    int height = _toolbar->height() + _cSlider->height() + image.height() + _percentInfo->height();
+    int height = _toolbar->height() + _cSlider->height() +
+            image.height() + _percentInfo->height();
     _image->resize(image.width(), image.height());
     resize(image.width(), height);
 }
@@ -80,26 +82,34 @@ MainWindow::resizeEvent(QResizeEvent *)
 void
 MainWindow::openfile()
 {
-    QString filename = QFileDialog::getOpenFileName(this,
-                                                    "Select an image file",
-                                                    "/home/dmitry/percent/");
-    if (filename.isEmpty()) {
-        QMessageBox::critical(this, "Error", "Can't open file.\n"
-                                             "Application will be closed.");
-        exit(EXIT_SUCCESS);
-    }
+    while (true) {
+        QString filename = QFileDialog::getOpenFileName(this,
+                                                      "Select an image file",
+                                                      "/home/dmitry/percent/");
+        if (filename.isEmpty()) {
+            if (_isFileOpen)
+                return;
+            else
+                exit(EXIT_FAILURE);
+        }
 
-    try {
-        /// Load an image
-        _src = cv::imread(filename.toStdString());
+        try {
+            /// Load an image
+            _src = cv::imread(filename.toStdString());
+            _isFileOpen = true;
 
-        /// Convert the image to Gray
-        cvtColor(_src, _src_gray, CV_BGR2GRAY );
-    }
-    catch (cv::Exception &exception) {
-        QMessageBox::critical(this, "Error", "File is not an image.\n"
-                                             "Application will be closed.");
-        abort();
+            resizeImageToFit();
+
+            /// Convert the image to Gray
+            cvtColor(_src, _src_gray, CV_BGR2GRAY );
+
+            fixLightness();
+        }
+        catch (cv::Exception&) {
+            QMessageBox::critical(this, "Error", "File is not an image.");
+            continue;
+        }
+        break;
     }
 
     binarize();
@@ -108,18 +118,73 @@ MainWindow::openfile()
 void
 MainWindow::binarize()
 {
-    auto adaptiveMethod = _gaussian->isChecked() ?
-                cv::ADAPTIVE_THRESH_GAUSSIAN_C : cv::ADAPTIVE_THRESH_MEAN_C;
+//    auto adaptiveMethod = _gaussian->isChecked() ?
+//                cv::ADAPTIVE_THRESH_GAUSSIAN_C : cv::ADAPTIVE_THRESH_MEAN_C;
 
-//    threshold(_src_gray, _dst, _slider->value(), 255, cv::THRESH_BINARY);
-    cv::adaptiveThreshold(_src_gray, _dst, 255,
-                          adaptiveMethod,
-                          cv::THRESH_BINARY,
-                          _blockSize->value(), _cSlider->value());
+    threshold(_src_gray, _dst, _cSlider->value(), 255, cv::THRESH_BINARY);
+//    cv::adaptiveThreshold(_src_gray, _dst, 255,
+//                          adaptiveMethod,
+//                          cv::THRESH_BINARY,
+//                          _blockSize->value(), _cSlider->value());
 
     displayMatrix(_dst, true);
+//    displayMatrix(_src_gray, true);
 
     calculatePercent();
+}
+
+void
+MainWindow::resizeImageToFit()
+{
+    double width = _src.size().width;
+    double height = _src.size().height;
+
+    if (width <= MAX_IMAGE_WIDTH && height <= MAX_IMAGE_HEIGHT)
+        return;
+
+    auto max = [] (double x, double y) { return x > y ? x : y; };
+    double scaleFactor = 1.0 / max(width  / MAX_IMAGE_WIDTH,
+                                   height / MAX_IMAGE_HEIGHT);
+    cv::resize(_src, _src, cv::Size(), scaleFactor, scaleFactor,
+               cv::INTER_CUBIC);
+}
+
+void
+MainWindow::fixLightness()
+{
+    int height = _src_gray.size().height;
+    int width = _src_gray.size().width;
+
+    cv::Mat m = cv::Mat(height, width, CV_8U);
+
+    // We have grayscale image _src_gray.
+    // Calculate lightness for each pixel as average of
+    // its neighborhood of radius r.
+    for (int i = RADIUS; i < height - RADIUS; ++ i)
+        for (int j = RADIUS; j < width - RADIUS; ++ j) {
+            int s = 0;
+            for (int k = -RADIUS; k <= RADIUS; ++ k)
+                for (int l = -RADIUS; l <= RADIUS; ++ l)
+                    s += _src_gray.at<uchar>(i + k, j + l);
+            s /= (2 * RADIUS + 1) * (2 * RADIUS + 1);
+            m.at<uchar>(i, j) = s;
+        }
+
+    int avg = 0; // average lightness for whole image
+    for (int i = RADIUS; i < height - RADIUS; ++ i)
+        for (int j = RADIUS; j < width - RADIUS; ++ j)
+            avg += m.at<uchar>(i, j);
+    avg /= ((width - 2 * RADIUS) * (height - 2 * RADIUS));
+
+    // Fixed pixel value is original pixel value minus difference of
+    // average lightness and pixel's lightness.
+    for (int i = RADIUS; i < height - RADIUS; ++ i)
+        for (int j = RADIUS; j < width - RADIUS; ++ j) {
+            int v = _src_gray.at<uchar>(i, j) + avg - m.at<uchar>(i, j);
+            v = v < 0 ? 0 : v;
+            v = v > 255 ? 255 : v;
+            _src_gray.at<uchar>(i, j) = v;
+        }
 }
 
 void
@@ -127,8 +192,8 @@ MainWindow::calculatePercent()
 {
     float whitePixelsCount = 0.0f;
     float blackPixelsCount = 0.0f;
-    for (int i = 0; i < _dst.rows; ++ i)
-        for (int j = 0; j < _dst.cols; ++ j) {
+    for (int i = RADIUS; i < _dst.rows - RADIUS; ++ i)
+        for (int j = RADIUS; j < _dst.cols - RADIUS; ++ j) {
             uchar intensity = _dst.at<uchar>(i, j);
             if (intensity == static_cast<uchar>(0))
                 blackPixelsCount += 1.0;
@@ -138,5 +203,6 @@ MainWindow::calculatePercent()
     float percent = whitePixelsCount > blackPixelsCount ?
                     blackPixelsCount : whitePixelsCount;
     percent = 100.0f * percent / (whitePixelsCount + blackPixelsCount);
-    _percentInfo->setText(QString("Object is %1% from the image.").arg(percent));
+    _percentInfo->setText(QString("Object is %1% from the image.")
+                          .arg(percent));
 }
