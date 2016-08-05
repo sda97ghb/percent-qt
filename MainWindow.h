@@ -47,9 +47,9 @@ private:
     cv::Mat _src, _src_gray, _dst;
 
     QWidget* _toolbar;
-    QCheckBox* _gaussian;
+//    QCheckBox* _gaussian;
     QSlider* _cSlider;
-    QSpinBox* _blockSize;
+//    QSpinBox* _blockSize;
     QWidget* _image;
     QLabel* _percentInfo;
 

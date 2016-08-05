@@ -24,12 +24,12 @@ MainWindow::MainWindow(QWidget* parent) :
     _cSlider->setValue(C_SLIDER_START_VALUE);
     connect(_cSlider, SIGNAL(valueChanged(int)), SLOT(binarize()));
 
-    _blockSize = new QSpinBox(_toolbar);
-    _blockSize->setRange(BLOCK_SIZE_MIN, BLOCK_SIZE_MAX);
-    _blockSize->setSingleStep(2);
-    _blockSize->setValue(BLOCK_SIZE_START_VALUE);
-    _blockSize->move(_gaussian->x() - _blockSize->width(), 2);
-    connect(_blockSize, SIGNAL(valueChanged(int)), SLOT(binarize()));
+//    _blockSize = new QSpinBox(_toolbar);
+//    _blockSize->setRange(BLOCK_SIZE_MIN, BLOCK_SIZE_MAX);
+//    _blockSize->setSingleStep(2);
+//    _blockSize->setValue(BLOCK_SIZE_START_VALUE);
+//    _blockSize->move(_gaussian->x() width() - _blockSize->width(), 2);
+//    connect(_blockSize, SIGNAL(valueChanged(int)), SLOT(binarize()));
 
     _image = new QWidget(this);
 
@@ -72,8 +72,8 @@ MainWindow::resizeEvent(QResizeEvent*)
     _percentInfo->resize(width(), _percentInfo->height());
 
     _toolbar->move(0, 0);
-    _gaussian->move(width() - _gaussian->width() - 2, 3);
-    _blockSize->move(_gaussian->x() - _blockSize->width() - 4, 2);
+//    _gaussian->move(width() - _gaussian->width() - 2, 3);
+//    _blockSize->move(_gaussian->x() - _blockSize->width() - 4, 2);
     _cSlider->move(0, _toolbar->height());
     _image->move(0, _toolbar->height() + _cSlider->height());
     _percentInfo->move(0, _toolbar->height() + _cSlider->height() + _image->height());
