@@ -1,6 +1,6 @@
 #include "MainWindow.h"
 
-MainWindow::MainWindow(QWidget *parent) :
+MainWindow::MainWindow(QWidget* parent) :
     QWidget(parent, Qt::Dialog),
     _isFileOpen(false)
 {
@@ -10,24 +10,24 @@ MainWindow::MainWindow(QWidget *parent) :
     _toolbar = new QWidget(this);
     _toolbar->resize(width(), 25);
 
-    QPushButton *openFileButton = new QPushButton("&Open", _toolbar);
+    QPushButton* openFileButton = new QPushButton("&Open", _toolbar);
     openFileButton->move(2, 2);
     connect(openFileButton, SIGNAL(clicked(bool)), SLOT(openfile()));
 
-    _gaussian = new QCheckBox("&Gaussian", this);
-    _gaussian->setChecked(true);
-    _gaussian->move(width() - _gaussian->width(), 3);
-    connect(_gaussian, SIGNAL(toggled(bool)), SLOT(binarize()));
+//    _gaussian = new QCheckBox("&Gaussian", this);
+//    _gaussian->setChecked(true);
+//    _gaussian->move(width() - _gaussian->width(), 3);
+//    connect(_gaussian, SIGNAL(toggled(bool)), SLOT(binarize()));
 
     _cSlider = new QSlider(Qt::Horizontal, this);
     _cSlider->setRange(THRESH_RANGE_MIN, THRESH_RANGE_MAX);
-    _cSlider->setValue(0);
+    _cSlider->setValue(C_SLIDER_START_VALUE);
     connect(_cSlider, SIGNAL(valueChanged(int)), SLOT(binarize()));
 
     _blockSize = new QSpinBox(_toolbar);
-    _blockSize->setRange(3, 99);
+    _blockSize->setRange(BLOCK_SIZE_MIN, BLOCK_SIZE_MAX);
     _blockSize->setSingleStep(2);
-    _blockSize->setValue(7);
+    _blockSize->setValue(BLOCK_SIZE_START_VALUE);
     _blockSize->move(_gaussian->x() - _blockSize->width(), 2);
     connect(_blockSize, SIGNAL(valueChanged(int)), SLOT(binarize()));
 
@@ -39,7 +39,7 @@ MainWindow::MainWindow(QWidget *parent) :
 }
 
 void
-MainWindow::displayMatrix(const cv::Mat &matrix, bool isGray)
+MainWindow::displayMatrix(const cv::Mat& matrix, bool isGray)
 {
     QImage image(matrix.cols, matrix.rows, QImage::Format_RGB32);
     for (int i = 0; i < matrix.rows; ++ i)
@@ -65,7 +65,7 @@ MainWindow::displayMatrix(const cv::Mat &matrix, bool isGray)
 }
 
 void
-MainWindow::resizeEvent(QResizeEvent *)
+MainWindow::resizeEvent(QResizeEvent*)
 {
     _cSlider->resize(width(), _cSlider->height());
     _toolbar->resize(width(), _toolbar->height());
@@ -127,8 +127,9 @@ MainWindow::binarize()
 //                          cv::THRESH_BINARY,
 //                          _blockSize->value(), _cSlider->value());
 
+    deleteTooSmallClusters();
+
     displayMatrix(_dst, true);
-//    displayMatrix(_src_gray, true);
 
     calculatePercent();
 }
@@ -136,8 +137,8 @@ MainWindow::binarize()
 void
 MainWindow::resizeImageToFit()
 {
-    double width = _src.size().width;
     double height = _src.size().height;
+    double width = _src.size().width;
 
     if (width <= MAX_IMAGE_WIDTH && height <= MAX_IMAGE_HEIGHT)
         return;
@@ -185,6 +186,57 @@ MainWindow::fixLightness()
             v = v > 255 ? 255 : v;
             _src_gray.at<uchar>(i, j) = v;
         }
+}
+
+void
+MainWindow::deleteTooSmallClusters()
+{
+    int height = _dst.size().height;
+    int width = _dst.size().width;
+    for (int i = RADIUS; i < height - RADIUS; ++ i)
+        for (int j = RADIUS; j < width - RADIUS; ++ j)
+            if (_dst.at<uchar>(i, j) == 0) {
+                _cluster.clear();
+                getCluster(i, j);
+                const int CRITICAL_CLUSTER_SIZE = 50;
+                if (_cluster.size() < CRITICAL_CLUSTER_SIZE)
+                    deleteCluster();
+            }
+}
+
+void
+MainWindow::getCluster(int i, int j)
+{
+    cv::Point this_point = cv::Point(i, j);
+    bool isIJInCluster = std::find(std::begin(_cluster), std::end(_cluster),
+                                   this_point) != std::end(_cluster);
+    if (isIJInCluster)
+        return;
+
+    _cluster.push_back(this_point);
+
+    for (int k = -1; k <= 1; ++ k)
+        for (int l = -1; l <= 1; ++ l) {
+            if (k == 0 && l == 0)
+                continue;
+            int newi = i + k;
+            int newj = j + l;
+            if (newi < RADIUS || newj < RADIUS ||
+                newi >= _dst.size().height - RADIUS ||
+                newj >= _dst.size().width - RADIUS)
+                continue;
+            if (_dst.at<uchar>(newi, newj) != 0)
+                continue;
+            getCluster(newi, newj);
+        }
+}
+
+void
+MainWindow::deleteCluster()
+{
+    for (cv::Point p : _cluster)
+        _dst.at<uchar>(p.x, p.y) = 255;
+    _cluster.clear();
 }
 
 void
