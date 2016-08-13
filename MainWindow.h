@@ -8,6 +8,7 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QPalette>
+#include <QProgressBar>
 #include <QPushButton>
 #include <QRgb>
 #include <QSlider>
@@ -51,6 +52,7 @@ private:
     QSlider* _cSlider;
 //    QSpinBox* _blockSize;
     QWidget* _image;
+    QProgressBar* _progress;
     QLabel* _percentInfo;
 
     std::vector<cv::Point> _cluster;
@@ -70,6 +72,9 @@ private:
 protected:
     void resizeEvent(QResizeEvent*);
     void displayMatrix(const cv::Mat& matrix, bool isGray = false);
+
+//private:
+//    bool isPointInCluster(int i, int j) const;
 
 public slots:
     void openfile();

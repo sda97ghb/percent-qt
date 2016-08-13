@@ -33,6 +33,8 @@ MainWindow::MainWindow(QWidget* parent) :
 
     _image = new QWidget(this);
 
+    _progress = new QProgressBar(this);
+
     _percentInfo = new QLabel("Object is %% from the image.", this);
 
     openfile();
@@ -59,16 +61,24 @@ MainWindow::displayMatrix(const cv::Mat& matrix, bool isGray)
     _image->setPalette(palette);
     _image->setAutoFillBackground(true);
     int height = _toolbar->height() + _cSlider->height() +
-            image.height() + _percentInfo->height();
+            image.height() + _progress->height() + _percentInfo->height();
     _image->resize(image.width(), image.height());
     resize(image.width(), height);
 }
+
+//bool MainWindow::isPointInCluster(int i, int j) const
+//{
+//    cv::Point this_point = cv::Point(i, j);
+//    return std::find(std::begin(_cluster), std::end(_cluster),
+//                     this_point) != std::end(_cluster);
+//}
 
 void
 MainWindow::resizeEvent(QResizeEvent*)
 {
     _cSlider->resize(width(), _cSlider->height());
     _toolbar->resize(width(), _toolbar->height());
+    _progress->resize(width(), _progress->height());
     _percentInfo->resize(width(), _percentInfo->height());
 
     _toolbar->move(0, 0);
@@ -76,7 +86,10 @@ MainWindow::resizeEvent(QResizeEvent*)
 //    _blockSize->move(_gaussian->x() - _blockSize->width() - 4, 2);
     _cSlider->move(0, _toolbar->height());
     _image->move(0, _toolbar->height() + _cSlider->height());
-    _percentInfo->move(0, _toolbar->height() + _cSlider->height() + _image->height());
+    _progress->move(0, _toolbar->height() + _cSlider->height()
+                    + _image->height());
+    _percentInfo->move(0, _toolbar->height() + _cSlider->height()
+                       + _image->height() + _progress->height());
 }
 
 void
@@ -193,7 +206,9 @@ MainWindow::deleteTooSmallClusters()
 {
     int height = _dst.size().height;
     int width = _dst.size().width;
-    for (int i = RADIUS; i < height - RADIUS; ++ i)
+    _progress->setMaximum(height - 2 * RADIUS);
+    for (int i = RADIUS; i < height - RADIUS; ++ i) {
+        _progress->setValue(i - RADIUS);
         for (int j = RADIUS; j < width - RADIUS; ++ j)
             if (_dst.at<uchar>(i, j) == 0) {
                 _cluster.clear();
@@ -202,7 +217,45 @@ MainWindow::deleteTooSmallClusters()
                 if (_cluster.size() < CRITICAL_CLUSTER_SIZE)
                     deleteCluster();
             }
+    }
+    _progress->setValue(_progress->maximum());
 }
+
+//void
+//MainWindow::getCluster(int i, int j)
+//{
+//    cv::Point this_point = cv::Point(i, j);
+//    _cluster.push_back(this_point);
+//    if (i > RADIUS && _dst.at<uchar>(i - 1, j) == 0
+//        && !isPointInCluster(i - 1, j))
+//        getCluster(i - 1, j);
+//    if (i < _dst.size().height - RADIUS - 1 && _dst.at<uchar>(i + 1, j) == 0
+//        && !isPointInCluster(i + 1, j))
+//        getCluster(i + 1, j);
+
+//    int l = j - 1;
+//    while (l >= RADIUS && _dst.at<uchar>(i, l) == 0) {
+//        if (i > RADIUS && _dst.at<uchar>(i - 1, l) == 0
+//            && !isPointInCluster(i - 1, l))
+//            getCluster(i - 1, l);
+//        if (i < _dst.size().height - RADIUS - 1
+//            && _dst.at<uchar>(i + 1, l) == 0 && !isPointInCluster(i + 1, l))
+//            getCluster(i + 1, l);
+//        _cluster.push_back(cv::Point(i, l));
+//        -- l;
+//    }
+//    int r = j + 1;
+//    while (r < _dst.size().width - RADIUS && _dst.at<uchar>(i, r) == 0) {
+//        if (i > RADIUS && _dst.at<uchar>(i - 1, r) == 0
+//            && !isPointInCluster(i - 1, r))
+//            getCluster(i - 1, r);
+//        if (i < _dst.size().height - RADIUS - 1
+//            && _dst.at<uchar>(i + 1, r) == 0 && !isPointInCluster(i + 1, r))
+//            getCluster(i + 1, r);
+//        _cluster.push_back(cv::Point(i, r));
+//        ++ r;
+//    }
+//}
 
 void
 MainWindow::getCluster(int i, int j)
@@ -217,7 +270,11 @@ MainWindow::getCluster(int i, int j)
 
     for (int k = -1; k <= 1; ++ k)
         for (int l = -1; l <= 1; ++ l) {
-            if (k == 0 && l == 0)
+            if ((k == 0 && l == 0) ||
+                (k == -1 && l == -1) ||
+                (k == -1 && l ==  1) ||
+                (k ==  1 && l ==  1) ||
+                (k ==  1 && l == -1))
                 continue;
             int newi = i + k;
             int newj = j + l;
