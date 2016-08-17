@@ -66,13 +66,6 @@ MainWindow::displayMatrix(const cv::Mat& matrix, bool isGray)
     resize(image.width(), height);
 }
 
-//bool MainWindow::isPointInCluster(int i, int j) const
-//{
-//    cv::Point this_point = cv::Point(i, j);
-//    return std::find(std::begin(_cluster), std::end(_cluster),
-//                     this_point) != std::end(_cluster);
-//}
-
 void
 MainWindow::resizeEvent(QResizeEvent*)
 {
@@ -213,7 +206,6 @@ MainWindow::deleteTooSmallClusters()
             if (_dst.at<uchar>(i, j) == 0) {
                 _cluster.clear();
                 getCluster(i, j);
-                const int CRITICAL_CLUSTER_SIZE = 50;
                 if (_cluster.size() < CRITICAL_CLUSTER_SIZE)
                     deleteCluster();
             }
@@ -260,6 +252,9 @@ MainWindow::deleteTooSmallClusters()
 void
 MainWindow::getCluster(int i, int j)
 {
+    if (_cluster.size() > CRITICAL_CLUSTER_SIZE)
+        return;
+
     cv::Point this_point = cv::Point(i, j);
     bool isIJInCluster = std::find(std::begin(_cluster), std::end(_cluster),
                                    this_point) != std::end(_cluster);

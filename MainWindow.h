@@ -45,6 +45,8 @@ private:
 
     const int RADIUS = 10;
 
+    const int CRITICAL_CLUSTER_SIZE = 50;
+
     cv::Mat _src, _src_gray, _dst;
 
     QWidget* _toolbar;
@@ -72,9 +74,6 @@ private:
 protected:
     void resizeEvent(QResizeEvent*);
     void displayMatrix(const cv::Mat& matrix, bool isGray = false);
-
-//private:
-//    bool isPointInCluster(int i, int j) const;
 
 public slots:
     void openfile();
