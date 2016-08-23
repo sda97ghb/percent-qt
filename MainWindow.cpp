@@ -170,6 +170,8 @@ void MainWindow::setCSlider()
             if (current > max && current != 0)
                 max = current;
         }
+    _cSlider->setMinimum(min);
+    _cSlider->setMaximum(max);
     _cSlider->setValue((min + max) / 2);
 }
 
