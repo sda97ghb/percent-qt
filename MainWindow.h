@@ -45,7 +45,7 @@ private:
 
     const int RADIUS = 10;
 
-    const int CRITICAL_CLUSTER_SIZE = 50;
+    const unsigned CRITICAL_CLUSTER_SIZE = 50;
 
     cv::Mat _src, _src_gray, _dst;
 
@@ -62,6 +62,8 @@ private:
     bool _isFileOpen;
 
     void resizeImageToFit();
+
+    void setCSlider();
 
     void fixLightness();
     void deleteTooSmallClusters();

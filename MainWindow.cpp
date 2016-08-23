@@ -118,6 +118,8 @@ MainWindow::openfile()
         break;
     }
 
+    setCSlider();
+
     binarize();
 }
 
@@ -127,7 +129,7 @@ MainWindow::binarize()
 //    auto adaptiveMethod = _gaussian->isChecked() ?
 //                cv::ADAPTIVE_THRESH_GAUSSIAN_C : cv::ADAPTIVE_THRESH_MEAN_C;
 
-    threshold(_src_gray, _dst, _cSlider->value(), 255, cv::THRESH_BINARY);
+    cv::threshold(_src_gray, _dst, _cSlider->value(), 255, cv::THRESH_BINARY);
 //    cv::adaptiveThreshold(_src_gray, _dst, 255,
 //                          adaptiveMethod,
 //                          cv::THRESH_BINARY,
@@ -154,6 +156,21 @@ MainWindow::resizeImageToFit()
                                    height / MAX_IMAGE_HEIGHT);
     cv::resize(_src, _src, cv::Size(), scaleFactor, scaleFactor,
                cv::INTER_CUBIC);
+}
+
+void MainWindow::setCSlider()
+{
+    uchar min = 255;
+    uchar max = 0;
+    for (int i = 0; i < _src_gray.rows; ++ i)
+        for (int j = 0; j < _src_gray.cols; ++ j) {
+            uchar current = _src_gray.at<uchar>(i, j);
+            if (current < min && current != 0)
+                min = current;
+            if (current > max && current != 0)
+                max = current;
+        }
+    _cSlider->setValue((min + max) / 2);
 }
 
 void
