@@ -75,7 +75,7 @@ private:
 
 protected:
     void resizeEvent(QResizeEvent*);
-    void displayMatrix(const cv::Mat& matrix, bool isGray = false);
+    void displayMatrix(const cv::Mat& matrix);
 
 public slots:
     void openfile();

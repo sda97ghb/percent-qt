@@ -41,12 +41,12 @@ MainWindow::MainWindow(QWidget* parent) :
 }
 
 void
-MainWindow::displayMatrix(const cv::Mat& matrix, bool isGray)
+MainWindow::displayMatrix(const cv::Mat& matrix)
 {
     QImage image(matrix.cols, matrix.rows, QImage::Format_RGB32);
     for (int i = 0; i < matrix.rows; ++ i)
         for (int j = 0; j < matrix.cols; ++ j)
-            if (isGray) {
+            if (matrix.type() == CV_8U) {
                 uchar intensity = matrix.at<uchar>(i, j);
                 image.setPixel(j, i, qRgb(intensity, intensity, intensity));
             } else {
@@ -107,7 +107,7 @@ MainWindow::openfile()
             resizeImageToFit();
 
             /// Convert the image to Gray
-            cvtColor(_src, _src_gray, CV_BGR2GRAY );
+            cv::cvtColor(_src, _src_gray, CV_BGR2GRAY);
 
             fixLightness();
         }
@@ -158,7 +158,8 @@ MainWindow::resizeImageToFit()
                cv::INTER_CUBIC);
 }
 
-void MainWindow::setCSlider()
+void
+MainWindow::setCSlider()
 {
     uchar min = 255;
     uchar max = 0;
@@ -178,8 +179,8 @@ void MainWindow::setCSlider()
 void
 MainWindow::fixLightness()
 {
-    int height = _src_gray.size().height;
-    int width = _src_gray.size().width;
+    int height = _src_gray.rows;
+    int width = _src_gray.cols;
 
     cv::Mat m = cv::Mat(height, width, CV_8U);
 
@@ -188,12 +189,12 @@ MainWindow::fixLightness()
     // its neighborhood of radius r.
     for (int i = RADIUS; i < height - RADIUS; ++ i)
         for (int j = RADIUS; j < width - RADIUS; ++ j) {
-            int s = 0;
+            int sum = 0;
             for (int k = -RADIUS; k <= RADIUS; ++ k)
                 for (int l = -RADIUS; l <= RADIUS; ++ l)
-                    s += _src_gray.at<uchar>(i + k, j + l);
-            s /= (2 * RADIUS + 1) * (2 * RADIUS + 1);
-            m.at<uchar>(i, j) = s;
+                    sum += _src_gray.at<uchar>(i + k, j + l);
+            sum /= (2 * RADIUS + 1) * (2 * RADIUS + 1);
+            m.at<uchar>(i, j) = sum;
         }
 
     int avg = 0; // average lightness for whole image
