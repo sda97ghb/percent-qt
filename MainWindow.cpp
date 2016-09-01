@@ -137,7 +137,7 @@ MainWindow::binarize()
 
     deleteTooSmallClusters();
 
-    displayMatrix(_dst, true);
+    displayMatrix(_dst);
 
     calculatePercent();
 }
