@@ -19,6 +19,9 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
+template <typename T> inline T max(T a, T b) { return a >= b ? a : b; }
+template <typename T> inline T min(T a, T b) { return a <= b ? a : b; }
+
 class MainWindow : public QWidget
 {
     Q_OBJECT

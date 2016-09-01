@@ -145,8 +145,8 @@ MainWindow::binarize()
 void
 MainWindow::resizeImageToFit()
 {
-    double height = _src.size().height;
-    double width = _src.size().width;
+    double height = _src.rows;
+    double width = _src.cols;
 
     if (width <= MAX_IMAGE_WIDTH && height <= MAX_IMAGE_HEIGHT)
         return;
@@ -187,26 +187,30 @@ MainWindow::fixLightness()
     // We have grayscale image _src_gray.
     // Calculate lightness for each pixel as average of
     // its neighborhood of radius r.
-    for (int i = RADIUS; i < height - RADIUS; ++ i)
-        for (int j = RADIUS; j < width - RADIUS; ++ j) {
+    for (int i = 0; i < height; ++ i)
+        for (int j = 0; j < width; ++ j) {
             int sum = 0;
-            for (int k = -RADIUS; k <= RADIUS; ++ k)
-                for (int l = -RADIUS; l <= RADIUS; ++ l)
-                    sum += _src_gray.at<uchar>(i + k, j + l);
-            sum /= (2 * RADIUS + 1) * (2 * RADIUS + 1);
+            int top = max(i - RADIUS, 0);
+            int bottom = min(i + RADIUS, height);
+            int left = max(j - RADIUS, 0);
+            int right = min(j + RADIUS, width);
+            for (int k = top; k < bottom; ++ k)
+                for (int l = left; l < right; ++ l)
+                    sum += _src_gray.at<uchar>(k, l);
+            sum /= (bottom - top + 1) * (right - left + 1);
             m.at<uchar>(i, j) = sum;
         }
 
     int avg = 0; // average lightness for whole image
-    for (int i = RADIUS; i < height - RADIUS; ++ i)
-        for (int j = RADIUS; j < width - RADIUS; ++ j)
-            avg += m.at<uchar>(i, j);
-    avg /= ((width - 2 * RADIUS) * (height - 2 * RADIUS));
+    for (int i = 0; i < height; ++ i)
+        for (int j = 0; j < width; ++ j)
+            avg += _src_gray.at<uchar>(i, j);
+    avg /= ((width) * (height));
 
     // Fixed pixel value is original pixel value minus difference of
     // average lightness and pixel's lightness.
-    for (int i = RADIUS; i < height - RADIUS; ++ i)
-        for (int j = RADIUS; j < width - RADIUS; ++ j) {
+    for (int i = 0; i < height; ++ i)
+        for (int j = 0; j < width; ++ j) {
             int v = _src_gray.at<uchar>(i, j) + avg - m.at<uchar>(i, j);
             v = v < 0 ? 0 : v;
             v = v > 255 ? 255 : v;
@@ -217,12 +221,12 @@ MainWindow::fixLightness()
 void
 MainWindow::deleteTooSmallClusters()
 {
-    int height = _dst.size().height;
-    int width = _dst.size().width;
-    _progress->setMaximum(height - 2 * RADIUS);
-    for (int i = RADIUS; i < height - RADIUS; ++ i) {
-        _progress->setValue(i - RADIUS);
-        for (int j = RADIUS; j < width - RADIUS; ++ j)
+    int height = _dst.rows;
+    int width = _dst.cols;
+    _progress->setMaximum(height);
+    for (int i = 0; i < height; ++ i) {
+        _progress->setValue(i);
+        for (int j = 0; j < width; ++ j)
             if (_dst.at<uchar>(i, j) == 0) {
                 _cluster.clear();
                 getCluster(i, j);
@@ -293,9 +297,9 @@ MainWindow::getCluster(int i, int j)
                 continue;
             int newi = i + k;
             int newj = j + l;
-            if (newi < RADIUS || newj < RADIUS ||
-                newi >= _dst.size().height - RADIUS ||
-                newj >= _dst.size().width - RADIUS)
+            if (newi < 0 || newj < 0 ||
+                newi > _dst.rows ||
+                newj > _dst.cols)
                 continue;
             if (_dst.at<uchar>(newi, newj) != 0)
                 continue;
@@ -316,8 +320,8 @@ MainWindow::calculatePercent()
 {
     float whitePixelsCount = 0.0f;
     float blackPixelsCount = 0.0f;
-    for (int i = RADIUS; i < _dst.rows - RADIUS; ++ i)
-        for (int j = RADIUS; j < _dst.cols - RADIUS; ++ j) {
+    for (int i = 0; i < _dst.rows; ++ i)
+        for (int j = 0; j < _dst.cols; ++ j) {
             uchar intensity = _dst.at<uchar>(i, j);
             if (intensity == static_cast<uchar>(0))
                 blackPixelsCount += 1.0;
