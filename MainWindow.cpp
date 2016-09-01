@@ -191,11 +191,11 @@ MainWindow::fixLightness()
         for (int j = 0; j < width; ++ j) {
             int sum = 0;
             int top = max(i - RADIUS, 0);
-            int bottom = min(i + RADIUS, height);
+            int bottom = min(i + RADIUS, height - 1);
             int left = max(j - RADIUS, 0);
-            int right = min(j + RADIUS, width);
-            for (int k = top; k < bottom; ++ k)
-                for (int l = left; l < right; ++ l)
+            int right = min(j + RADIUS, width - 1);
+            for (int k = top; k <= bottom; ++ k)
+                for (int l = left; l <= right; ++ l)
                     sum += _src_gray.at<uchar>(k, l);
             sum /= (bottom - top + 1) * (right - left + 1);
             m.at<uchar>(i, j) = sum;
